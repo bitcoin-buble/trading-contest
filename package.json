@@ -1,0 +1,11 @@
+{
+  "name": "contest-picker",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Bitcoin Buble <bitcoin.buble@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "ccxt": "^1.17.523",
+    "lodash": "^4.17.11"
+  }
+}
