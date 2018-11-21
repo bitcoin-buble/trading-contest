@@ -6,6 +6,8 @@
   "license": "MIT",
   "dependencies": {
     "ccxt": "^1.17.523",
+    "dotenv": "^6.1.0",
     "lodash": "^4.17.11"
-  }
+  },
+  "target": "es6"
 }
