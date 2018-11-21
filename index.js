@@ -7,7 +7,6 @@ const {
   keyBy,
   slice,
   set,
-  mapValues,
   zip,
   fromPairs
 } = require("lodash/fp");

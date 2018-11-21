@@ -5,6 +5,7 @@
   "author": "Bitcoin Buble <bitcoin.buble@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "big.js": "^5.2.2",
     "ccxt": "^1.17.523",
     "dotenv": "^6.1.0",
     "lodash": "^4.17.11"
