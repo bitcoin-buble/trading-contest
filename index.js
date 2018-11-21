@@ -8,9 +8,24 @@ const {
   slice,
   set,
   zip,
-  fromPairs
+  fromPairs,
+  reduce,
+  mapValues,
+  toPairs,
+  update,
+  sortBy,
+  sumBy
 } = require("lodash/fp");
 const ccxt = require("ccxt");
+const big = require("big.js");
+
+const bigSum = reduce((a, b) => a.add(b), big(0));
+
+const bigSumBy = key =>
+  flow(
+    map(key),
+    bigSum
+  );
 
 const keyByTimestamp = flow(
   map(zipObject(["timestamp", "open", "high", "low", "close", "volume"])),
@@ -21,23 +36,40 @@ const keyByTimestamp = flow(
 const applyUsdPrices = usdTickers =>
   map(obj =>
     flow(
-      set("usdVolume", usdTickers[obj.timestamp].mid * obj.volume),
-      set("usdMid", usdTickers[obj.timestamp].mid * obj.mid)
+      set(
+        "usdVolume",
+        big(usdTickers[obj.timestamp].mid)
+          .times(obj.volume)
+          .times(obj.mid)
+      ),
+      set("usdMid", big(usdTickers[obj.timestamp].mid).times(obj.mid)),
+      set("btcVolume", big(obj.mid).times(obj.volume))
     )(obj)
   );
 
-const run = async () => {
-  const exchange = new ccxt.binance();
+const oneWeekAgo = new Date();
+oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-  const markets = await exchange.fetchMarkets();
+console.log(oneWeekAgo.getTime());
+
+const run = async () => {
+  const binance = new ccxt.binance();
+  const coinbase = new ccxt.coinbasepro();
+
+  const markets = await binance.fetchMarkets();
   const btcMarkets = flow(
     filter({ quote: "BTC" }),
-    map("symbol"),
-    slice(0, 3)
+    filter({ symbol: "POE/BTC" }),
+    map("symbol")
+    // slice(0, 30)
   )(markets);
   console.log(btcMarkets);
 
-  const btcusd = await exchange.fetchOHLCV("BTC/USDT", "1h");
+  const btcusd = await coinbase.fetchOHLCV(
+    "BTC/USD",
+    "1h",
+    oneWeekAgo.getTime()
+  );
   console.log(btcusd);
 
   const btcByTimestamp = keyByTimestamp(btcusd);
@@ -45,15 +77,43 @@ const run = async () => {
   console.log(btcByTimestamp);
 
   const allMarketValues = await Promise.all(
-    map(symbol => exchange.fetchOHLCV(symbol, "1h", 1542797805000), btcMarkets)
+    map(
+      symbol => binance.fetchOHLCV(symbol, "1h", oneWeekAgo.getTime()),
+      btcMarkets
+    )
   );
-  const x = flow(
+  const allOHLCVs = flow(
     map(keyByTimestamp),
     map(applyUsdPrices(btcByTimestamp)),
     zip(btcMarkets),
     fromPairs
   )(allMarketValues);
-  console.log("here here ", x);
+  console.log("here here ", allOHLCVs);
+
+  const usdVolume = flow(
+    mapValues(bigSumBy("usdVolume")),
+    toPairs,
+    map(([symbol, value]) => ({ symbol, value: value })),
+    // sortBy("value"),
+    map(update("value", v => v.toFixed(0)))
+  )(allOHLCVs);
+  console.log(usdVolume);
+
+  const btcVolume = flow(
+    mapValues(bigSumBy("btcVolume")),
+    toPairs,
+    map(([symbol, value]) => ({ symbol, value: value })),
+    // sortBy("value"),
+    map(update("value", v => v.toFixed(2)))
+  )(allOHLCVs);
+  console.log(btcVolume);
+
+  const volume = flow(
+    mapValues(sumBy("volume")),
+    toPairs,
+    map(([symbol, value]) => ({ symbol, value: value }))
+  )(allOHLCVs);
+  console.log(volume);
 };
 
 run();
