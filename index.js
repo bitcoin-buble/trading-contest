@@ -59,9 +59,8 @@ const run = async () => {
   const markets = await binance.fetchMarkets();
   const btcMarkets = flow(
     filter({ quote: "BTC" }),
-    filter({ symbol: "POE/BTC" }),
+    // filter({ symbol: "POE/BTC" }),
     map("symbol")
-    // slice(0, 30)
   )(markets);
   console.log(btcMarkets);
 
@@ -70,11 +69,11 @@ const run = async () => {
     "1h",
     oneWeekAgo.getTime()
   );
-  console.log(btcusd);
+  // console.log(btcusd);
 
   const btcByTimestamp = keyByTimestamp(btcusd);
 
-  console.log(btcByTimestamp);
+  // console.log(btcByTimestamp);
 
   const allMarketValues = await Promise.all(
     map(
@@ -82,19 +81,19 @@ const run = async () => {
       btcMarkets
     )
   );
+
   const allOHLCVs = flow(
     map(keyByTimestamp),
     map(applyUsdPrices(btcByTimestamp)),
     zip(btcMarkets),
     fromPairs
   )(allMarketValues);
-  console.log("here here ", allOHLCVs);
 
   const usdVolume = flow(
     mapValues(bigSumBy("usdVolume")),
     toPairs,
     map(([symbol, value]) => ({ symbol, value: value })),
-    // sortBy("value"),
+    arr => arr.sort((a, b) => b.value.minus(a.value)),
     map(update("value", v => v.toFixed(0)))
   )(allOHLCVs);
   console.log(usdVolume);
@@ -103,17 +102,10 @@ const run = async () => {
     mapValues(bigSumBy("btcVolume")),
     toPairs,
     map(([symbol, value]) => ({ symbol, value: value })),
-    // sortBy("value"),
-    map(update("value", v => v.toFixed(2)))
+    arr => arr.sort((a, b) => b.value.minus(a.value)),
+    map(update("value", v => v.toFixed(0)))
   )(allOHLCVs);
   console.log(btcVolume);
-
-  const volume = flow(
-    mapValues(sumBy("volume")),
-    toPairs,
-    map(([symbol, value]) => ({ symbol, value: value }))
-  )(allOHLCVs);
-  console.log(volume);
 };
 
 run();
