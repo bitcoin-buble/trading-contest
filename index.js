@@ -14,12 +14,30 @@ const {
   toPairs,
   update,
   sortBy,
-  sumBy
+  sumBy,
+  zipWith,
+  merge,
+  orderBy
 } = require("lodash/fp");
 const ccxt = require("ccxt");
 const big = require("big.js");
 
 const bigSum = reduce((a, b) => a.add(b), big(0));
+
+const bigMin = reduce((a, b) => (a.lte(b) ? a : b), big(999999999999999));
+const bigMax = reduce((a, b) => (a.gte(b) ? a : b), big(0));
+
+const bigMaxBy = key =>
+  flow(
+    map(key),
+    bigMax
+  );
+
+const bigMinBy = key =>
+  flow(
+    map(key),
+    bigMin
+  );
 
 const bigSumBy = key =>
   flow(
@@ -89,23 +107,53 @@ const run = async () => {
     fromPairs
   )(allMarketValues);
 
-  const usdVolume = flow(
-    mapValues(bigSumBy("usdVolume")),
+  const minimums = flow(
+    mapValues(bigMinBy("usdMid")),
     toPairs,
-    map(([symbol, value]) => ({ symbol, value: value })),
-    arr => arr.sort((a, b) => b.value.minus(a.value)),
-    map(update("value", v => v.toFixed(0)))
+    map(([symbol, value]) => ({ symbol, min: value })),
+    orderBy(["symbol"], ["asc"])
+    // arr => arr.sort((a, b) => b.value.minus(a.value)),
+    // map(update("value", v => v.toFixed(8)))
   )(allOHLCVs);
-  console.log(usdVolume);
 
-  const btcVolume = flow(
-    mapValues(bigSumBy("btcVolume")),
+  console.log(minimums);
+
+  const maximums = flow(
+    mapValues(bigMaxBy("usdMid")),
     toPairs,
-    map(([symbol, value]) => ({ symbol, value: value })),
-    arr => arr.sort((a, b) => b.value.minus(a.value)),
-    map(update("value", v => v.toFixed(0)))
+    map(([symbol, value]) => ({ symbol, max: value })),
+    orderBy(["symbol"], ["asc"])
+    // arr => arr.sort((a, b) => b.value.minus(a.value)),
+    // map(update("value", v => v.toFixed(8)))
   )(allOHLCVs);
-  console.log(btcVolume);
+
+  console.log(maximums);
+
+  const minAndMaxes = zipWith(merge, maximums, minimums);
+
+  console.log(minAndMaxes);
+
+  const withChange = map(x =>
+    set("percentChange", x.max.minus(x.min).dividedB)
+  );
+
+  // const usdVolume = flow(
+  //   mapValues(bigSumBy("usdVolume")),
+  //   toPairs,
+  //   map(([symbol, value]) => ({ symbol, value: value })),
+  //   arr => arr.sort((a, b) => b.value.minus(a.value)),
+  //   map(update("value", v => v.toFixed(0)))
+  // )(allOHLCVs);
+  // console.log(usdVolume);
+
+  // const btcVolume = flow(
+  //   mapValues(bigSumBy("btcVolume")),
+  //   toPairs,
+  //   map(([symbol, value]) => ({ symbol, value: value })),
+  //   arr => arr.sort((a, b) => b.value.minus(a.value)),
+  //   map(update("value", v => v.toFixed(0)))
+  // )(allOHLCVs);
+  // console.log(btcVolume);
 };
 
 run();
