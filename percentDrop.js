@@ -17,7 +17,9 @@ const {
   sumBy,
   zipWith,
   merge,
-  orderBy
+  orderBy,
+  first,
+  last
 } = require("lodash/fp");
 const ccxt = require("ccxt");
 const big = require("big.js");
@@ -108,49 +110,58 @@ const run = async () => {
     fromPairs
   )(allMarketValues);
 
-  const minimums = flow(
-    mapValues(bigMinBy("usdMid")),
-    toPairs,
-    map(([symbol, value]) => ({ symbol, min: value })),
-    orderBy(["symbol"], ["asc"])
-    // arr => arr.sort((a, b) => b.value.minus(a.value)),
-    // map(update("value", v => v.toFixed(8)))
-  )(allOHLCVs);
+  // const minimums = flow(
+  //   mapValues(first),
+  //   toPairs
+  //   // map(([symbol, value]) => ({ symbol, min: value })),
+  //   // orderBy(["symbol"], ["asc"])
+  //   // arr => arr.sort((a, b) => b.value.minus(a.value)),
+  //   // map(update("value", v => v.toFixed(8)))
+  // )(allOHLCVs);
 
-  console.log(minimums);
+  // console.log(minimums);
 
-  const maximums = flow(
-    mapValues(bigMaxBy("usdMid")),
-    toPairs,
-    map(([symbol, value]) => ({ symbol, max: value })),
-    orderBy(["symbol"], ["asc"])
-    // arr => arr.sort((a, b) => b.value.minus(a.value)),
-    // map(update("value", v => v.toFixed(8)))
-  )(allOHLCVs);
+  // const maximums = flow(
+  //   mapValues(last),
+  //   toPairs
+  //   // map(([symbol, value]) => ({ symbol, max: value })),
+  //   // orderBy(["symbol"], ["asc"])
+  //   // arr => arr.sort((a, b) => b.value.minus(a.value)),
+  //   // map(update("value", v => v.toFixed(8)))
+  // )(allOHLCVs);
 
-  console.log(maximums);
+  // console.log(maximums);
 
-  const minAndMaxes = zipWith(merge, maximums, minimums);
+  // const minAndMaxes = zipWith(merge, maximums, minimums);
 
-  console.log(minAndMaxes);
-
+  // console.log(minAndMaxes);
+  console.log(allOHLCVs);
   const calculatePercentageChange = obj =>
     set(
       "percentChange",
-      !obj.max.eq(0) &&
-        obj.max
-          .minus(obj.min)
-          .div(obj.max)
-          .times(100)
-          .toFixed(2),
+      obj.end
+        .minus(obj.start)
+        .div(obj.end)
+        .times(100)
+        .toFixed(5),
       obj
     );
 
+  const extractStartAndEnd = arr => {
+    return {
+      start: first(arr).usdMid,
+      end: last(arr).usdMid
+    };
+  };
+
   const withChange = flow(
+    mapValues(extractStartAndEnd),
+    toPairs,
+    map(([symbol, obj]) => set("symbol", symbol, obj)),
     map(calculatePercentageChange),
-    map(update("min", val => val.toFixed(4))),
-    map(update("max", val => val.toFixed(4)))
-  )(minAndMaxes);
+    map(update("start", val => val.toFixed(4))),
+    map(update("end", val => val.toFixed(4)))
+  )(allOHLCVs);
 
   console.log(withChange);
   // const usdVolume = flow(
