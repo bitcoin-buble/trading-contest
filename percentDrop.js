@@ -5,47 +5,22 @@ const {
   filter,
   zipObject,
   keyBy,
-  slice,
   set,
   zip,
   fromPairs,
-  reduce,
-  mapValues,
   toPairs,
   update,
-  sortBy,
-  sumBy,
-  zipWith,
-  merge,
+  split,
+  get,
   orderBy,
+  compact,
   first,
+  join,
   last
 } = require("lodash/fp");
 const ccxt = require("ccxt");
 const big = require("big.js");
-
-const bigSum = reduce((a, b) => a.add(b), big(0));
-
-const bigMin = reduce((a, b) => (a.lte(b) ? a : b), big(999999999999999));
-const bigMax = reduce((a, b) => (a.gte(b) ? a : b), big(0));
-
-const bigMaxBy = key =>
-  flow(
-    map(key),
-    bigMax
-  );
-
-const bigMinBy = key =>
-  flow(
-    map(key),
-    bigMin
-  );
-
-const bigSumBy = key =>
-  flow(
-    map(key),
-    bigSum
-  );
+const { getPhonetic } = require("./phonetic");
 
 const keyByTimestamp = flow(
   map(zipObject(["timestamp", "open", "high", "low", "close", "volume"])),
@@ -70,20 +45,21 @@ const applyUsdPrices = usdTickers =>
 const oneWeekAgo = new Date();
 oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-console.log(oneWeekAgo.getTime());
+// console.log(oneWeekAgo.getTime());
 
-const run = async () => {
+exports.run = async () => {
   const binance = new ccxt.binance();
   const coinbase = new ccxt.coinbasepro();
 
   const markets = await binance.fetchMarkets();
   const btcMarkets = flow(
     filter({ quote: "BTC" }),
-    // filter({ symbol: "POE/BTC" }),
+    // reject({ symbol: "BCH/BTC" }), // showing no values in binance
+    // reject({ symbol: "HSR/BTC" }), // showing no values in binance
     map("symbol")
     // slice(0, 3)
   )(markets);
-  console.log(btcMarkets);
+  // console.log(btcMarkets);
 
   const btcusd = await coinbase.fetchOHLCV(
     "BTC/USD",
@@ -103,6 +79,7 @@ const run = async () => {
     )
   );
 
+  console.log("Parsing market data. ");
   const allOHLCVs = flow(
     map(keyByTimestamp),
     map(applyUsdPrices(btcByTimestamp)),
@@ -110,77 +87,59 @@ const run = async () => {
     fromPairs
   )(allMarketValues);
 
-  // const minimums = flow(
-  //   mapValues(first),
-  //   toPairs
-  //   // map(([symbol, value]) => ({ symbol, min: value })),
-  //   // orderBy(["symbol"], ["asc"])
-  //   // arr => arr.sort((a, b) => b.value.minus(a.value)),
-  //   // map(update("value", v => v.toFixed(8)))
-  // )(allOHLCVs);
-
-  // console.log(minimums);
-
-  // const maximums = flow(
-  //   mapValues(last),
-  //   toPairs
-  //   // map(([symbol, value]) => ({ symbol, max: value })),
-  //   // orderBy(["symbol"], ["asc"])
-  //   // arr => arr.sort((a, b) => b.value.minus(a.value)),
-  //   // map(update("value", v => v.toFixed(8)))
-  // )(allOHLCVs);
-
-  // console.log(maximums);
-
-  // const minAndMaxes = zipWith(merge, maximums, minimums);
-
-  // console.log(minAndMaxes);
-  console.log(allOHLCVs);
   const calculatePercentageChange = obj =>
     set(
       "percentChange",
-      obj.end
-        .minus(obj.start)
-        .div(obj.end)
-        .times(100)
-        .toFixed(5),
+      Number(
+        obj.end
+          .minus(obj.start)
+          .div(obj.end)
+          .times(100)
+          .toFixed(5)
+      ),
       obj
     );
 
-  const extractStartAndEnd = arr => {
+  const extractStartAndEnd = ([symbol, values]) => {
+    if (values.length === 0) {
+      return;
+    }
+
     return {
-      start: first(arr).usdMid,
-      end: last(arr).usdMid
+      start: first(values).usdMid,
+      end: last(values).usdMid,
+      symbol
     };
   };
 
-  const withChange = flow(
-    mapValues(extractStartAndEnd),
+  const tickersWithPercentChange = flow(
     toPairs,
-    map(([symbol, obj]) => set("symbol", symbol, obj)),
+    map(extractStartAndEnd),
+    compact,
     map(calculatePercentageChange),
     map(update("start", val => val.toFixed(4))),
-    map(update("end", val => val.toFixed(4)))
+    map(update("end", val => val.toFixed(4))),
+    orderBy(["percentChange"], ["asc"])
   )(allOHLCVs);
 
-  console.log(withChange);
-  // const usdVolume = flow(
-  //   mapValues(bigSumBy("usdVolume")),
-  //   toPairs,
-  //   map(([symbol, value]) => ({ symbol, value: value })),
-  //   arr => arr.sort((a, b) => b.value.minus(a.value)),
-  //   map(update("value", v => v.toFixed(0)))
-  // )(allOHLCVs);
-  // console.log(usdVolume);
+  // console.log(tickersWithPercentChange);
+  console.log("Extracting the winner. ");
+  const thePick = first(tickersWithPercentChange);
 
-  // const btcVolume = flow(
-  //   mapValues(bigSumBy("btcVolume")),
-  //   toPairs,
-  //   map(([symbol, value]) => ({ symbol, value: value })),
-  //   arr => arr.sort((a, b) => b.value.minus(a.value)),
-  //   map(update("value", v => v.toFixed(0)))
-  // )(allOHLCVs);
-  // console.log(btcVolume);
+  const coin = flow(
+    get("symbol"),
+    split("/"),
+    first
+  )(thePick);
+
+  // console.log(coin);
+  const phoneticCoin = flow(
+    split(""),
+    map(getPhonetic),
+    join(" ")
+  )(coin);
+
+  // console.log(phoneticCoin);
+
+  return { coin, phoneticCoin, drop: thePick.percentChange };
 };
-
-run();
