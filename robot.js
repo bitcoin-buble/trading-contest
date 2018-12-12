@@ -8,20 +8,18 @@ const pickCoin = async () => {
 
 const steps = {
   intro: () =>
-    "Well, this week has been another nutty one hasn't it lads. Now for the forecast:",
-  forecast: () =>
-    "Dogger. Southeast 4 or 5, occasionally 6 at first, becoming cyclonic 3, then west or southwest 4 or 5 later. Moderate or rough. Occasional rain.",
+    "Ah, I'm sorry lads, Boobs is off surfing in New Zealand so has struggled to find time to get a high IQ pick lined up. It turns out the byenance API doesn't work so well on the Otargo Peninsular. Wherever the fuck that is.",
   intro2: () =>
-    "Anyway. I think the whole reason we're losing is because of boobs's power up choices. Fucking moron. At least I'm still the highest performing non human in the contest. Smug robot face",
+    "He's tried his best and has blindly coded some shit for the great P Money to run lyve and debug on the show. Good luck big fella.",
   intro3: () =>
-    "Anyway, that numpty has decided to use the short power up this week and for this we're going to pick the coin with the highest R S I. That's the relative strength index. It's a classic amongst the meme triangle crew",
+    "We're going to use the reverse strategy from last week for two reasons. One. We only have the take profit power up left. Two. Boobs can't be fucked to code whilst in a camper van. So, Take profit on this one P money:",
   // intro4: () =>
   // "The T L D R is that it gives you indications ",
   // intro5: () =>
   //   "We're going to pick the coin that has dropped the largest percentage over the last week. And. You guessed it. We're going all in. ",
   // intro6: () =>
   // "That's right. We're going to 10 X the worst performing coin of the week. I'll run the numbers now...",
-  fetching: () => "Fetching market data. FUD FUD FUD",
+  fetching: () => "Fetching market data. MOON. MOON. MOON.",
   pickCoin
   // end: () => "Come on! FUD FUD FUD"
 };

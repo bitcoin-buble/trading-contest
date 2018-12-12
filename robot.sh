@@ -1,9 +1,7 @@
 #!/bin/bash
 
-node robot.js intro | tee >(say) >(say -o "./output/intro.aiff")
-read -n 1
-node robot.js forecast | tee >(say) >(say -o "./output/forecast.aiff")
-read -n 1
+# node robot.js intro | tee >(say) >(say -o "./output/intro.aiff")
+# read -n 1
 node robot.js intro2 | tee >(say) >(say -o "./output/intro2.aiff")
 read -n 1
 node robot.js intro3 | tee >(say) >(say -o "./output/intro3.aiff")
